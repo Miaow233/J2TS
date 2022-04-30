@@ -1,0 +1,32 @@
+{
+  "Interfaces": [
+    "AnnotatedArrayType",
+    "AnnotatedElement",
+    "AnnotatedArrayType",
+    "AnnotatedElement",
+    "AnnotatedParameterizedType",
+    "AnnotatedType",
+    "AnnotatedTypeVariable",
+    "AnnotatedWildcardType",
+    "GenericArrayType",
+    "GenericDeclaration",
+    "InvocationHandler",
+    "Member",
+    "ParameterizedType",
+    "Type",
+    "TypeVariable",
+    "WildcardType"
+  ],
+  "Classes": [
+    "AccessibleObject",
+    "Array",
+    "Constructor",
+    "Executable",
+    "Field",
+    "Method",
+    "Modifier",
+    "Parameter",
+    "Proxy",
+    "ReflectPermission"
+  ]
+}
