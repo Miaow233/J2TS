@@ -1,0 +1,14 @@
+{
+  "Interfaces": [
+    "BaseStream",
+    "Collector",
+    "DoubleStream",
+    "IntStream",
+    "LongStream",
+    "Stream"
+  ],
+  "Classes": [
+    "Collectors",
+    "StreamSupport"
+  ]
+}

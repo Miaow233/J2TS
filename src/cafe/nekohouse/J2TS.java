@@ -1,70 +1,49 @@
 package cafe.nekohouse;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
 import org.bsc.java2typescript.TSType;
 import org.bsc.java2typescript.TypescriptConverter;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.alibaba.fastjson.JSONObject;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
 public class J2TS {
     static Map<String, TSType> declaredTypeMap = new HashMap<>();
 
-    /* formatting: Packages.%s */
-    public TypescriptConverter converter;
+    static final String base = "G:\\IntelliJIDEAProjects\\J2TS\\src\\resources";
 
-    J2TS(TypescriptConverter.Compatibility compatibility) {
+    /* formatting: Packages.%s */
+    public final TypescriptConverter converter;
+
+    J2TS() {
         this.converter = new TypescriptConverter(TypescriptConverter.Compatibility.RHINO);
     }
 
-    public static void main(String[] args) throws ClassNotFoundException, IOException {
-        addPackage("java.lang");
-        addPackage("java.io");
-        addPackage("java.net");
+    public static void main(String[] args) throws IOException, JSONException {
+        J2TS j2ts = new J2TS();
+        j2ts.addPackage("java.lang");
+        j2ts.addPackage("java.lang.reflect");
+        j2ts.addPackage("java.io");
+        j2ts.addPackage("java.net");
+        j2ts.addPackage("java.util");
+        j2ts.addPackage("java.util.stream");
 
-        J2TS j2ts = new J2TS(TypescriptConverter.Compatibility.RHINO);
-        j2ts.convert("java.lang.String");
-        j2ts.convert("java.lang.Class");
-        j2ts.convert("java.lang.ClassLoader");
-        j2ts.convert("java.lang.Process");
-        j2ts.convert("java.lang.ProcessBuilder");
-        j2ts.convert("java.lang.Runtime");
-        marge("java.lang");
-        j2ts.convert("java.io.File");
-        j2ts.convert("java.io.FileInputStream");
-        j2ts.convert("java.io.FileOutputStream");
-        j2ts.convert("java.io.InputStream");
-        j2ts.convert("java.io.OutputStream");
-        j2ts.convert("java.io.PrintStream");
-        j2ts.convert("java.io.PrintWriter");
-        j2ts.convert("java.io.BufferedInputStream");
-        j2ts.convert("java.io.BufferedOutputStream");
-        j2ts.convert("java.io.BufferedReader");
-        j2ts.convert("java.io.BufferedWriter");
-        j2ts.convert("java.io.ByteArrayInputStream");
-        j2ts.convert("java.io.ByteArrayOutputStream");
-        j2ts.convert("java.io.DataInputStream");
-        j2ts.convert("java.io.DataOutputStream");
-        j2ts.convert("java.io.FileInputStream");
-        j2ts.convert("java.io.FileOutputStream");
-        j2ts.convert("java.io.InputStreamReader");
-        j2ts.convert("java.io.OutputStreamWriter");
-        j2ts.convert("java.io.PrintStream");
-        marge("java.io");
+        j2ts.convertPackage(j2ts, "java.lang");
+        j2ts.convertPackage(j2ts, "java.lang.reflect");
+        j2ts.convertPackage(j2ts, "java.io");
+        j2ts.convertPackage(j2ts, "java.net");
+        j2ts.convertPackage(j2ts, "java.util");
+        j2ts.convertPackage(j2ts, "java.util.stream");
     }
 
     private void convert(String cl) throws IOException {
-
-        Path p = Paths.get("G:\\IntelliJIDEAProjects\\J2TS\\src\\resources\\types\\" + cl + ".d.ts");
-        Files.write(p, converter.processClass(3, declaredTypeMap.get(cl), declaredTypeMap).getBytes());
-        p = Paths.get("G:\\IntelliJIDEAProjects\\J2TS\\src\\resources\\" + cl + ".ts");
-        Files.write(p, converter.processStatic(declaredTypeMap.get(cl), declaredTypeMap).getBytes());
+        writeFile(base + "\\types\\" + cl + ".d.ts",
+                converter.processClass(3, declaredTypeMap.get(cl), declaredTypeMap));
+        writeFile(base + "\\" + cl + ".ts",
+                converter.processStatic(declaredTypeMap.get(cl), declaredTypeMap));
     }
 
     private static void addType(String className) throws ClassNotFoundException {
@@ -72,20 +51,22 @@ public class J2TS {
         declaredTypeMap.put(className, TSType.of(cl));
     }
 
-    private static void addPackage(String packageName) throws IOException, ClassNotFoundException {
+    private void addPackage(String packageName) throws IOException, JSONException {
 
-        JSONObject json = JSONReader.readJSON("G:\\IntelliJIDEAProjects\\J2TS\\src\\resources\\" + packageName + ".json");
+        JSONObject json = JSONReader.readJSON(base + "\\" + packageName + ".json");
 
         JSONArray interfaces = json.getJSONArray("Interfaces");
-        interfaces.forEach(key -> {
+
+        for (Object interfaceName : interfaces) {
             try {
-                addType(packageName + "." + key);
+                addType(packageName + "." + interfaceName.toString());
             } catch (ClassNotFoundException e) {
-                System.out.println(packageName + "." + key + "not found");
+                System.out.println(packageName + "." + interfaceName + "not found");
             }
-        });
+        }
 
         JSONArray classes = json.getJSONArray("Classes");
+
         classes.forEach(key -> {
             try {
                 addType(packageName + "." + key);
@@ -96,32 +77,65 @@ public class J2TS {
     }
 
     public static void marge(String packageName) throws IOException {
-        String base = "G:\\IntelliJIDEAProjects\\J2TS\\src\\resources";
+        {
+            File typeDir = new File(base + "\\types");
+            File[] files = typeDir.listFiles((dir1, name) -> name.startsWith(packageName) && name.endsWith(".d.ts") && !name.toLowerCase().equals(packageName + ".d.ts"));
+            StringBuilder sb = new StringBuilder();
+            for (File file : files) {
+                sb.append(readFile(file.getAbsolutePath()));
+                file.delete();
+            }
+            writeFile(base + "\\types\\" + packageName + ".d.ts", sb.toString());
+        }
+        {
+            File staticDir = new File(base);
+            File[] files = staticDir.listFiles((dir1, name) -> name.startsWith(packageName) && name.endsWith(".ts") && !name.toLowerCase().equals(packageName + ".ts"));
+            StringBuilder sb = new StringBuilder();
+            for (File file : files) {
+                sb.append(readFile(file.getAbsolutePath()));
+                file.delete();
+            }
+            writeFile(base + "\\" + packageName + ".ts", sb.toString());
+        }
+    }
 
-        File typeDir = new File(base + "\\types");
-        File[] files = typeDir.listFiles((dir1, name) -> name.startsWith(packageName) && name.endsWith(".d.ts"));
+    public static void writeFile(String fileName, String content) throws IOException {
+        FileWriter out = new FileWriter(fileName);
+        out.write(content);
+        out.close();
+    }
+
+    public static String readFile(String fileName) throws IOException {
+        BufferedReader in = new BufferedReader(new FileReader(fileName));
         StringBuilder sb = new StringBuilder();
-        for (File file : files) {
-            // read file
-            sb.append(new String(Files.readAllBytes(file.toPath())));
-            file.delete();
+        String line;
+        while ((line = in.readLine()) != null) {
+            sb.append(line);
+            sb.append("\n");
         }
-        // write file
-        Path p = Paths.get(typeDir.getAbsolutePath() + "\\" + packageName + ".d.ts");
-        Files.write(p, sb.toString().getBytes());
+        in.close();
+        return sb.toString();
+    }
 
-        File staticDir = new File(base );
-        files = staticDir.listFiles((dir1, name) -> name.startsWith(packageName) && name.endsWith(".ts"));
-        sb = new StringBuilder();
-        for (File file : files) {
-            // read file
-            sb.append(new String(Files.readAllBytes(file.toPath())));
-            file.delete();
+    public void convertPackage(J2TS j2ts, String packageName) throws IOException, JSONException {
 
-        }
-        // write file
-        p = Paths.get(staticDir.getAbsolutePath() + "\\" + packageName + ".ts");
-        Files.write(p, sb.toString().getBytes());
-
+        JSONObject json = JSONReader.readJSON(base + "\\" + packageName + ".json");
+        JSONArray classes = json.getJSONArray("Classes");
+        classes.forEach(key -> {
+            try {
+                j2ts.convert(packageName + "." + key);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        JSONArray interfaces = json.getJSONArray("Interfaces");
+        interfaces.forEach(key -> {
+            try {
+                j2ts.convert(packageName + "." + key);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        marge(packageName);
     }
 }
